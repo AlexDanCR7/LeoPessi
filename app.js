@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
+import { BrowserRouter as Router, Route, Link, Routes } from 'react-router-dom';
 
 function Square({ value, onSquareClick }) {
   return (
@@ -52,9 +53,40 @@ function Board({ xIsNext, squares, onPlay }) {
   );
 }
 
+function Scoreboard({ scores, onBack }) {
+  return (
+    <div className="scoreboard">
+      <h2>Scoreboard</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Player</th>
+            <th>Score</th>
+          </tr>
+        </thead>
+        <tbody>
+          {scores.map((score, index) => (
+            <tr key={index}>
+              <td>{score.player}</td>
+              <td>{score.score}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <button onClick={onBack}>Go Back</button>
+    </div>
+  );
+}
+
 export default function Game() {
   const [history, setHistory] = useState([Array(9).fill(null)]);
   const [currentMove, setCurrentMove] = useState(0);
+  const [scores, setScores] = useState([
+    { player: 'Player X', score: 0 },
+    { player: 'Player O', score: 0 },
+  ]);
+  const [isScoreboardVisible, setIsScoreboardVisible] = useState(false);
+
   const xIsNext = currentMove % 2 === 0;
   const currentSquares = history[currentMove];
 
@@ -62,10 +94,24 @@ export default function Game() {
     const nextHistory = [...history.slice(0, currentMove + 1), nextSquares];
     setHistory(nextHistory);
     setCurrentMove(nextHistory.length - 1);
+
+    const winner = calculateWinner(nextSquares);
+    if (winner) {
+      const updatedScores = scores.map(score => {
+        if (score.player === 'Player X' && winner === 'X') {
+          return { ...score, score: score.score + 1 };
+        }
+        if (score.player === 'Player O' && winner === 'O') {
+          return { ...score, score: score.score + 1 };
+        }
+        return score;
+      });
+      setScores(updatedScores);
+    }
   }
 
-  function jumpTo(nextMove) {
-    setCurrentMove(nextMove);
+  function toggleScoreboard() {
+    setIsScoreboardVisible(!isScoreboardVisible);
   }
 
   const moves = history.map((squares, move) => {
@@ -77,20 +123,35 @@ export default function Game() {
     }
     return (
       <li key={move}>
-        <button onClick={() => jumpTo(move)}>{description}</button>
+        <button onClick={() => setCurrentMove(move)}>{description}</button>
       </li>
     );
   });
 
   return (
-    <div className="game">
-      <div className="game-board">
-        <Board xIsNext={xIsNext} squares={currentSquares} onPlay={handlePlay} />
+    <Router>
+      <div className="game">
+        <div className="game-board">
+          <Routes>
+            <Route
+              path="/"
+              element={<Board xIsNext={xIsNext} squares={currentSquares} onPlay={handlePlay} />}
+            />
+            <Route
+              path="/scoreboard"
+              element={
+                <Scoreboard scores={scores} onBack={toggleScoreboard} />
+              }
+            />
+          </Routes>
+          <button onClick={toggleScoreboard}>Toggle Scoreboard</button>
+        </div>
+        <div className="game-info">
+          <Link to="/scoreboard">Go to Scoreboard</Link>
+          <ol>{moves}</ol>
+        </div>
       </div>
-      <div className="game-info">
-        <ol>{moves}</ol>
-      </div>
-    </div>
+    </Router>
   );
 }
 
